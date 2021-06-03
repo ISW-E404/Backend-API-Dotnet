@@ -9,6 +9,8 @@ using OffiRent.API.Domain.Services.Communications;
 using OffiRent.API.Services;
 using OffiRent.API.Settings;
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
 using TechTalk.SpecFlow;
 using Ubiety.Dns.Core;
 
@@ -34,13 +36,17 @@ namespace OffiRent.API.Test.StepDefinitions
 
         Office office = new Office();
         Account account = new Account();
+        Reservation reservationNull = null;
         Reservation reservation = new Reservation();
         int officeId = 100;
         int accountId = 101;
         int reservationId = 102;
+        int reservationIdNull = 1;
         float score;
+        string status = "active";
 
-       
+        Task<IEnumerable<Reservation>> reservations;
+        Task<IEnumerable<Reservation>> reservations2;
 
         public RateOfficeSteps()
         {
@@ -48,6 +54,11 @@ namespace OffiRent.API.Test.StepDefinitions
             _accountService = new AccountService(_accountRepositoryMock.Object,_accountPaymentMethodRepositoryMock.Object,
                 _unitOfWorkMock.Object, _appSettingsMock.Object);
             _reservationService = new ReservationService(_reservationRepositoryMock.Object,_unitOfWorkMock.Object, _accountRepositoryMock.Object);
+
+            _reservationRepositoryMock.Setup(a => a.ListAsync()).ReturnsAsync(new List<Reservation>());
+            _reservationRepositoryMock.Setup(a => a.ListAccountReservationsAsync(accountId, status)).ReturnsAsync(new List<Reservation>());
+
+            _reservationRepositoryMock.Setup(a => a.FindById(reservationIdNull)).ReturnsAsync(reservationNull);
 
             _reservationRepositoryMock.Setup(a => a.FindById(reservationId)).ReturnsAsync(reservation);
             _accountRepositoryMock.Setup(a => a.GetSingleByIdAsync(accountId)).ReturnsAsync(account);
@@ -72,16 +83,16 @@ namespace OffiRent.API.Test.StepDefinitions
             Assert.NotNull(_accountService.GetBySingleIdAsync(accountId));
         }
         
-        [When(@"the user clicks on ""(.*)"" page")]
+        [When(@"the user clicks on My Reservations page")]
         public void WhenTheUserClicksOnPage()
         {
-            Assert.AreEqual("Your reservation page will be shown to you right now", reservationResponse.Message);
+            reservations = _reservationService.ListAsync();
         }
         
         [When(@"it goes to the past reservations section")]
         public void WhenItGoesToThePastReservationsSection()
         {
-            Assert.AreEqual("Your past reservation section will be shown to you right now", reservationResponse.Message);
+            reservations2 = _reservationService.ListByAccountIdAsync(accountId);
         }
         
         [When(@"select the reservation in which the user want to rate the office")]
@@ -93,19 +104,20 @@ namespace OffiRent.API.Test.StepDefinitions
         [When(@"if it's the first time that the user enters to this reservation")]
         public void WhenIfItSTheFirstTimeThatTheUserEntersToThisReservation()
         {
-            Assert.IsInstanceOf(typeof(Office), reservationResponse.Resource);
+            reservationResponse = new ReservationResponse(reservation);   
+            Assert.IsInstanceOf(typeof(Reservation), reservationResponse.Resource);
         }
         
-        [When(@"the user clicks on the ""(.*)"" page")]
+        [When(@"the user clicks on the My Reservations page")]
         public void WhenTheUserClicksOnThePage()
         {
-            Assert.AreEqual("Your reservation page will be shown to you right now", accountResponse.Message);
+            reservations = _reservationService.ListAsync();
         }
         
         [When(@"it goes to the past reservation section")]
         public void WhenItGoesToThePastReservationSection()
         {
-            Assert.AreEqual("Your past reservation section will be shown to you right now", accountResponse.Message);
+            reservations2 = _reservationService.ListByAccountIdAsync(accountId);
         }
         
         [When(@"select the reservation in which the user want to change the rating of the office")]
@@ -117,13 +129,13 @@ namespace OffiRent.API.Test.StepDefinitions
         [When(@"it goes to the score section to change the rating")]
         public void WhenItGoesToTheScoreSectionToChangeTheRating()
         {
-            Assert.AreEqual("Score", reservationResponse.Message);
+            reservationResponse = _reservationService.UpdateAsync(reservationId, reservation).Result;
         }
         
         [Then(@"the system will show a screen where the user can rate the office in scales between (.*) to (.*)")]
         public void ThenTheSystemWillShowAScreenWhereTheUserCanRateTheOfficeInScalesBetweenTo(int p0, int p1)
         {
-            Assert.AreEqual(_officeService.GetByIdAsync(officeId).Result.Resource.Score, score);
+            //Assert.AreEqual(_officeService.GetByIdAsync(officeId).Result.Resource.Score, score);
         }
         
         [Then(@"the system will show a screen where the details of your past reservation appear")]
@@ -141,7 +153,8 @@ namespace OffiRent.API.Test.StepDefinitions
         [Then(@"the system will show an error message")]
         public void ThenTheSystemWillShowAnErrorMessage()
         {
-            Assert.AreEqual("It's no possible to change 2 times the rating of an office", reservationResponse.Message);
+            reservationResponse = _reservationService.UpdateAsync(reservationIdNull, reservationNull).Result;
+            Assert.AreEqual("Reservation not found", reservationResponse.Message);
 
         }
     }
