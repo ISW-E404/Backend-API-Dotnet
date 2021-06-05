@@ -52,6 +52,15 @@ namespace OffiRent.API
 
             services.AddControllers();
 
+            services.AddDbContext<AppDbContext>(options =>
+            {
+                //options.UseInMemoryDatabase("offirent-api-in-memory");
+                //options.UseMySQL(Configuration.GetConnectionString("MySQLConnection"));
+                var conecctionString = Configuration.GetConnectionString("MySQLConnection");
+                options.UseMySql(conecctionString,
+                    new MySqlServerVersion(new Version(3, 1, 10)));
+            });
+
             //AppSettings Section Reference
             var appSettingsSection = Configuration.GetSection("AppSettings");
             services.Configure<AppSettings>(appSettingsSection);
@@ -81,14 +90,7 @@ namespace OffiRent.API
 
 
 
-            services.AddDbContext<AppDbContext>(options =>
-            {
-                //options.UseInMemoryDatabase("offirent-api-in-memory");
-                //options.UseMySQL(Configuration.GetConnectionString("MySQLConnection"));
-                var conecctionString = Configuration.GetConnectionString("MySQLConnection");
-                options.UseMySql(conecctionString,
-                    new MySqlServerVersion(new Version(3, 1, 10)));
-            });
+            
 
             services.AddScoped<IDepartamentRepository, DepartamentRepository>();
             services.AddScoped<IDistrictRepository, DistrictRepository>();
