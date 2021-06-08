@@ -57,8 +57,15 @@ namespace OffiRent.API
                 //options.UseInMemoryDatabase("offirent-api-in-memory");
                 //options.UseMySQL(Configuration.GetConnectionString("MySQLConnection"));
                 var conecctionString = Configuration.GetConnectionString("MySQLConnection");
+                var serverVersion = new MySqlServerVersion(new Version(3, 1, 10));
                 options.UseMySql(conecctionString,
-                    new MySqlServerVersion(new Version(3, 1, 10)));
+                        ServerVersion.AutoDetect(conecctionString),
+                        mysqlOptions =>
+                            mysqlOptions.EnableRetryOnFailure(
+                                maxRetryCount: 10,
+                                maxRetryDelay: TimeSpan.FromSeconds(30),
+                                errorNumbersToAdd: null) );;
+                    
             });
 
             //AppSettings Section Reference
